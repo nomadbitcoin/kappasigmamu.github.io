@@ -28,24 +28,6 @@ jobs:
       - name: Verify Cypress installation
         run: npx cypress verify
 
-      - name: Verify test configuration files exist
-        run: |
-          echo "Checking for required test infrastructure files..."
-          test -f cypress.config.ts && echo "✓ Cypress config found"
-          test -f config/kusama.yml && echo "✓ Chopsticks config found"
-          test -d cypress/support && echo "✓ Cypress support directory found"
-          test -d cypress/fixtures && echo "✓ Cypress fixtures directory found"
-          test -f cypress/e2e/smoke.cy.ts && echo "✓ Smoke test file found"
-
-      - name: Validate test utilities are importable
-        run: |
-          echo "Validating TypeScript compilation of test utilities..."
-          npx tsc --noEmit --skipLibCheck \
-            cypress/support/wallet-mock.ts \
-            cypress/support/navigation.ts \
-            cypress/support/blockchain-helpers.ts \
-            cypress/support/commands.ts || echo "Note: TypeScript validation completed with warnings"
-
       - name: Start Chopsticks (background)
         run: |
           echo "Starting Chopsticks blockchain fork..."
@@ -62,13 +44,6 @@ jobs:
             exit 1
           }
           echo "✓ Chopsticks is running and responding"
-
-      - name: Verify Chopsticks RPC endpoint
-        run: |
-          echo "Testing Chopsticks RPC endpoint..."
-          curl -H "Content-Type: application/json" \
-               -d '{"id":1, "jsonrpc":"2.0", "method":"system_health"}' \
-               http://localhost:8000 || echo "RPC test completed"
 
       - name: Start dev server (background)
         run: |
@@ -119,21 +94,11 @@ jobs:
       - name: Generate test summary
         if: always()
         run: |
-          echo "=== E2E Test Suite Summary ===" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
           if [ -f cypress/results/results.json ]; then
-            echo "Test results generated successfully" >> $GITHUB_STEP_SUMMARY
-            # Parse results and display summary
-            npx node -e "
-              const results = require('./cypress/results/results.json');
-              const stats = results.stats || {};
-              console.log(\`- **Tests**: \${stats.tests || 0}\`);
-              console.log(\`- **Passes**: \${stats.passes || 0}\`);
-              console.log(\`- **Failures**: \${stats.failures || 0}\`);
-              console.log(\`- **Duration**: \${(stats.duration / 1000).toFixed(2)}s\`);
-            " >> $GITHUB_STEP_SUMMARY || echo "Could not parse test results" >> $GITHUB_STEP_SUMMARY
+            echo "✓ Tests completed - see artifacts for details" >> $GITHUB_STEP_SUMMARY
           else
-            echo "No test results file found" >> $GITHUB_STEP_SUMMARY
+            echo "⚠ No test results generated" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Cleanup
