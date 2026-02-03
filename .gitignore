@@ -32,3 +32,4 @@ yarn-error.log*
 **/*/*.swp
 db.sqlite*
 *.wasm
+package-lock.json
