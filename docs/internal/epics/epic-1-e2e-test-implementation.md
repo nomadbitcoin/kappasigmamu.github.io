@@ -143,29 +143,28 @@
 
 ### Phase 2: Core Flows
 
-#### Story 2.1: Enhance Wallet Connection Tests (Suite 1)
+#### Story 1.5: Wallet Integration Tests (Suite 1)
 
 **As a** test engineer,
-**I want** comprehensive wallet connection E2E tests,
-**so that** wallet functionality is verified before release.
+**I want** actual wallet connection E2E tests with Cypress wallet plugin,
+**so that** wallet integration and account level detection is verified before release.
+
+**Note:** Basic UI tests already exist in `wallet-connection.cy.ts`. This story focuses on actual wallet plugin integration.
 
 **Acceptance Criteria:**
-1. Test: User connects wallet successfully
-2. Test: User disconnects wallet
+1. Test: User connects wallet with test account successfully (using wallet plugin)
+2. Test: User disconnects wallet (functional test)
 3. Test: Wallet persists across page refresh
-4. Test: User level shows correctly for Human accounts
-5. Test: User level shows correctly for Bidder accounts
-6. Test: User level shows correctly for Candidate accounts
-7. Test: User level shows correctly for Cyborg accounts
-8. All P0 wallet tests passing
+4. Test: User level shows correctly for Human accounts (Dave)
+5. Test: User level shows correctly for Bidder accounts (Alice)
+6. Test: User level shows correctly for Candidate accounts (Bob)
+7. Test: User level shows correctly for Cyborg accounts (Eve)
 
 **Tasks:**
-- [ ] Enhance `cypress/e2e/wallet-connection.cy.ts`
-- [ ] Add connect wallet success scenario
-- [ ] Add disconnect wallet scenario
-- [ ] Add wallet persistence test
-- [ ] Add account level detection tests for all user types (Human, Bidder, Candidate, Cyborg)
-- [ ] Verify all scenarios from test plan Section 1.1 and 1.2
+- [ ] Add wallet plugin integration tests to existing `cypress/e2e/wallet-connection.cy.ts`
+- [ ] Use @chainsafe/cypress-polkadot-wallet plugin to inject test accounts
+- [ ] Implement actual wallet connection, disconnect, and persistence tests
+- [ ] Add account level detection tests for all user types (Dave, Alice, Bob, Eve)
 
 **Test Coverage Updates:**
 - Update Wallet & Account section: `View account level`, `Persist wallet on refresh` to ✅
@@ -173,33 +172,34 @@
 
 ---
 
-#### Story 2.2: Implement Navigation Tests (Suite 2)
+#### Story 1.6: Navigation Tests - Complete ✅ (Suite 2)
+
+**Status:** ✅ **90% Complete** - Existing `smoke.cy.ts` covers all requirements
 
 **As a** test engineer,
-**I want** navigation E2E tests for all routes,
-**so that** page routing is verified before release.
+**I want** to finalize navigation E2E tests,
+**so that** all routes and navigation is properly documented and ready for production.
+
+**Note:** `smoke.cy.ts` already implements all navigation tests. This story is just cleanup.
 
 **Acceptance Criteria:**
-1. Test: All primary routes load successfully (/, /welcome, /journey, /guide, /wiki, /gilbertogil, /futurivel)
-2. Test: All explore section routes load with blockchain data
-3. Test: All POI pages load correctly
-4. Test: RPC parameter persists across navigation
-5. Tests verify content loads without errors
+1. ✅ All primary routes load successfully - **DONE in smoke.cy.ts**
+2. ✅ All explore section routes load with blockchain data - **DONE in smoke.cy.ts**
+3. ✅ All POI pages load correctly - **DONE in smoke.cy.ts**
+4. ✅ RPC parameter persists across navigation - **DONE in smoke.cy.ts**
+5. Optional: Rename smoke.cy.ts to navigation.cy.ts for clarity
 
 **Tasks:**
-- [ ] Create `cypress/e2e/navigation.cy.ts`
-- [ ] Implement primary routes tests (Section 2.1)
-- [ ] Implement explore section tests (Section 2.2)
-- [ ] Implement POI pages tests
-- [ ] Implement RPC parameter persistence test (Section 2.3)
+- [ ] Optional: Rename `cypress/e2e/smoke.cy.ts` to `cypress/e2e/navigation.cy.ts`
+- [ ] Optional: Add data-testids if Story 1.1 complete
 
 **Test Coverage Updates:**
-- Navigation & Viewing should already show 100%
-- Verify and update Test Files Status table
+- Navigation & Viewing already shows 100%
+- Mark story as complete or low priority
 
 ---
 
-#### Story 2.3: Implement Bidding Operations Tests (Suite 3)
+#### Story 1.7: Implement Bidding Operations Tests (Suite 3)
 
 **As a** test engineer,
 **I want** bidding operations E2E tests,
@@ -230,7 +230,7 @@
 
 ---
 
-#### Story 2.4: Implement Payouts Tests (Suite 6)
+#### Story 1.8: Implement Payouts Tests (Suite 6)
 
 **As a** test engineer,
 **I want** payouts E2E tests,
@@ -259,7 +259,7 @@
 
 ### Phase 3: Governance
 
-#### Story 3.1: Implement Candidate Voting Tests (Suite 4)
+#### Story 1.9: Implement Candidate Voting Tests (Suite 4)
 
 **As a** test engineer,
 **I want** candidate voting E2E tests,
@@ -288,7 +288,7 @@
 
 ---
 
-#### Story 3.2: Implement Member Operations Tests (Suite 5)
+#### Story 1.10: Implement Member Operations Tests (Suite 5)
 
 **As a** test engineer,
 **I want** member operations E2E tests,
@@ -314,7 +314,7 @@
 
 ---
 
-#### Story 3.3: Implement Membership Claim Tests (Suite 7)
+#### Story 1.11: Implement Membership Claim Tests (Suite 7)
 
 **As a** test engineer,
 **I want** membership claim E2E tests,
@@ -341,7 +341,7 @@
 
 ### Phase 4: Polish
 
-#### Story 4.1: Implement User Journey Tests (Suite 8)
+#### Story 1.12: Implement User Journey Tests (Suite 8)
 
 **As a** test engineer,
 **I want** end-to-end user journey tests,
@@ -362,7 +362,7 @@
 
 ---
 
-#### Story 4.2: Implement Error Handling Tests (Suite 9)
+#### Story 1.13: Implement Error Handling Tests (Suite 9)
 
 **As a** test engineer,
 **I want** error handling E2E tests,
@@ -387,7 +387,7 @@
 
 ---
 
-#### Story 4.3: Implement Suspended Members Tests (Suite 10)
+#### Story 1.14: Implement Suspended Members Tests (Suite 10)
 
 **As a** test engineer,
 **I want** suspended members E2E tests,
@@ -406,7 +406,7 @@
 
 ---
 
-#### Story 4.4: CI/CD Integration
+#### Story 1.15: CI/CD Integration
 
 **As a** developer,
 **I want** E2E tests integrated into CI/CD pipeline,
@@ -432,13 +432,18 @@
 
 ## Definition of Done (Epic Level)
 
-- [ ] All 14 stories completed and approved
+- [ ] All 15 stories completed and approved (Note: Story 1.6 is 90% done via existing smoke.cy.ts)
 - [ ] 100% of P0 tests passing
 - [ ] 100% of P1 tests passing
 - [ ] Test execution time < 10 minutes
 - [ ] `e2e-test-coverage-overview.md` shows 80%+ coverage
 - [ ] CI/CD pipeline running E2E tests on all PRs
 - [ ] No flaky tests (retry rate < 5%)
+
+**Epic Efficiency Note:**
+- Story 1.6 (Navigation) is 90% complete via existing `smoke.cy.ts` (227 lines)
+- Story 1.5 (Wallet) has basic UI tests; needs wallet plugin integration
+- Estimated ~20% time savings on Story 1.6
 
 ---
 

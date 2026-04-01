@@ -11,9 +11,15 @@
 ### Commits
 - ALWAYS use the task at `/home/admin/coding-sessions/_bmad/core/tasks/github-commit-changes.md` for writing commits
 
-### Branch Naming
+### Branch Naming - Based on user request
+
+if working with Epics:
 - Branch names MUST follow the pattern: `feature/epic-{n}-{name_of_epic_file}`
 - Example: `feature/epic-1-user-authentication`
+
+if working with Individual Story files:
+- Branch names MUST follow the pattern: `feature/story-{n}-{name_of_story_file}`
+- Example: `feature/story-1.1-add-plugin-authentication`
 
 ### Pull Requests
 - Open PRs against the `main` branch
