@@ -81,7 +81,7 @@ function Wallets({ show, setShow }: { show: boolean; setShow: (show: boolean) =>
               <AccountRow
                 key={account.address}
                 onClick={() => handleClick(account)}
-                data-testid={`account-${account.name}`}
+                data-testid="account-switcher"
               >
                 <Col xs={2}>
                   <Identicon value={account.address} size={42} theme={'polkadot'} />
@@ -113,7 +113,7 @@ function Wallets({ show, setShow }: { show: boolean; setShow: (show: boolean) =>
               className="d-flex align-items-center justify-content-start"
               onClick={handleDisconnect}
               role="button"
-              data-testid="disconnect-btn"
+              data-testid="disconnect-button"
             >
               Disconnect <FaPowerOff className="mx-2" />
             </Col>
