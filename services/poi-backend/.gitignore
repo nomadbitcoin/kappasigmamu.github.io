@@ -1,0 +1,12 @@
+node_modules/
+.yarn/
+.env
+.env.*
+!env.example
+
+# The ops seed. Committing this hands over the account that pays for and authorizes
+# every upload.
+secrets/
+
+# Local chain spec, generated from a polkadot-bulletin-chain checkout.
+spec/

@@ -1,0 +1,23 @@
+# The poi-backend image builds from the repo root, because it consumes the PAPI
+# descriptors in `.papi/` through a `portal:` dependency. That makes the whole repo the
+# build context, so everything the image does not need is excluded here — most
+# importantly the secrets, which must never enter an image layer.
+
+services/poi-backend/secrets/
+services/poi-backend/.env
+services/poi-backend/.env.*
+.env
+.env.*
+
+**/node_modules/
+.yarn/cache/
+.yarn/install-state.gz
+
+# Frontend build output and sources the backend does not use.
+build/
+coverage/
+cypress/
+public/
+src/
+docs/
+.git/

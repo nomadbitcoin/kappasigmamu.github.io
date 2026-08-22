@@ -4807,6 +4807,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@noble/curves@npm:^2.2.0, @noble/curves@npm:~2.3.0":
+  version: 2.3.0
+  resolution: "@noble/curves@npm:2.3.0"
+  dependencies:
+    "@noble/hashes": "npm:2.3.0"
+  checksum: 10c0/c0a4bc7623c3eb291e16e721a5b7db593aa216b99d634218619ffab25bef057729e761a848883bbda6d114fd3445924241500d3c0f04851f810cebb8e8121882
+  languageName: node
+  linkType: hard
+
 "@noble/hashes@npm:1.4.0":
   version: 1.4.0
   resolution: "@noble/hashes@npm:1.4.0"
@@ -4818,6 +4827,13 @@ __metadata:
   version: 1.8.0
   resolution: "@noble/hashes@npm:1.8.0"
   checksum: 10c0/06a0b52c81a6fa7f04d67762e08b2c476a00285858150caeaaff4037356dd5e119f45b2a530f638b77a5eeca013168ec1b655db41bae3236cb2e9d511484fc77
+  languageName: node
+  linkType: hard
+
+"@noble/hashes@npm:2.3.0, @noble/hashes@npm:^2.3.0, @noble/hashes@npm:~2.3.0":
+  version: 2.3.0
+  resolution: "@noble/hashes@npm:2.3.0"
+  checksum: 10c0/85651da4c1ea1db15fcacac7f38e4c4e6d60154cd116200b1002c198893bfad2733b31108352fde307126bab789f82f47b5bee8a12462b12f25fd0703aed7dce
   languageName: node
   linkType: hard
 
@@ -5605,6 +5621,28 @@ __metadata:
   peerDependencies:
     rxjs: ">=7.8.0"
   checksum: 10c0/cb636fb29c0fe612bfec9c076c99a9fefed495f2c8ab825f46fc7c91afb0c120bf7eb4b35cee7a3eea0864d46a6743a93b1e969b19808cbb1f3716aae6608a75
+  languageName: node
+  linkType: hard
+
+"@polkadot-labs/hdkd-helpers@npm:^0.0.32, @polkadot-labs/hdkd-helpers@npm:~0.0.32":
+  version: 0.0.32
+  resolution: "@polkadot-labs/hdkd-helpers@npm:0.0.32"
+  dependencies:
+    "@noble/curves": "npm:^2.2.0"
+    "@noble/hashes": "npm:^2.3.0"
+    "@scure/base": "npm:^2.3.0"
+    "@scure/sr25519": "npm:^2.3.0"
+    scale-ts: "npm:^1.6.1"
+  checksum: 10c0/967d406bbf0ba453bbe559a289b3eaafb673871a56176fb2db0f3410fcf81971d212dfd279caf6fffbd29f6c5cbc5684488cebe37f7845c001b9b46384f1d9e5
+  languageName: node
+  linkType: hard
+
+"@polkadot-labs/hdkd@npm:^0.0.30":
+  version: 0.0.30
+  resolution: "@polkadot-labs/hdkd@npm:0.0.30"
+  dependencies:
+    "@polkadot-labs/hdkd-helpers": "npm:~0.0.32"
+  checksum: 10c0/96e0b6d9b9838c71afc487416285884d86ca20ca2683818494d5ab484259f1cecb7de4e6d8ba3d4b84a186d6aa5c795ff87503aedf2f004953e3acd767d63e72
   languageName: node
   linkType: hard
 
@@ -6673,6 +6711,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@scure/base@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "@scure/base@npm:2.3.0"
+  checksum: 10c0/538da122a8ef9a3f2951b912a8350ad73a1dd812fa99b0fc8617ace1a3200ccd6dfb6d3756c3f8fbc18780156baaf38a95c3e8512cb4af8d593b3bc4b8ee02e7
+  languageName: node
+  linkType: hard
+
 "@scure/sr25519@npm:^0.2.0":
   version: 0.2.0
   resolution: "@scure/sr25519@npm:0.2.0"
@@ -6680,6 +6725,16 @@ __metadata:
     "@noble/curves": "npm:~1.9.2"
     "@noble/hashes": "npm:~1.8.0"
   checksum: 10c0/7836a7ea9e50c3c36c19f14408b52fc57d255e5b82a19e1ccb05bc3e369b20ee64d00683930b7171a1a728b4ed8f8fbb8f28194f1d51eb380991e0be2f44daef
+  languageName: node
+  linkType: hard
+
+"@scure/sr25519@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "@scure/sr25519@npm:2.3.0"
+  dependencies:
+    "@noble/curves": "npm:~2.3.0"
+    "@noble/hashes": "npm:~2.3.0"
+  checksum: 10c0/3528fa5bc2d72d9c53ab636bea4be52fa1f7a13f7454951b07fb21c6f2aa21fe8436a2a4e7e69bd875d3ef00cc1d03f957a6855028ce1cfe09b5eb38a21699d4
   languageName: node
   linkType: hard
 
@@ -14588,6 +14643,8 @@ __metadata:
     "@pmmmwh/react-refresh-webpack-plugin": "npm:^0.6.2"
     "@polkadot-api/descriptors": "portal:.papi/descriptors"
     "@polkadot-api/sdk-accounts": "npm:^0.7.0"
+    "@polkadot-labs/hdkd": "npm:^0.0.30"
+    "@polkadot-labs/hdkd-helpers": "npm:^0.0.32"
     "@polkadot/react-identicon": "npm:^3.16.7"
     "@popperjs/core": "npm:^2.11.8"
     "@react-three/drei": "npm:^10.7.7"

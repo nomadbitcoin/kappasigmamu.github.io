@@ -1,0 +1,67 @@
+# The whole POC on one machine: Bulletin dev node, IPFS gateway, and the backend.
+#
+#   docker compose -f docker-compose.local.yml up -d
+#   docker compose -f docker-compose.local.yml exec poi-backend node scripts/setup-local-chain.mjs
+#
+# Asset Hub is NOT here. Society membership is read from a Chopsticks fork of Asset Hub
+# Kusama, which runs on the host (see docs/poi-bulletin-poc-local.md) because it needs
+# the repo's `config/kusama.yml` fixture to seed candidates.
+#
+# Everything here uses well-known dev keys and sudo. Never expose it.
+
+services:
+  bulletin-node:
+    # polkadot-omni-node: Bulletin ships no node crate of its own. `--dev` gives a
+    # single self-finalizing node where //Alice holds sudo, which is what makes
+    # add_authorizer possible locally at all.
+    image: parity/polkadot-omni-node:latest
+    command:
+      - --chain=/spec/bulletin-dev-spec.json
+      - --dev
+      - --ipfs-server
+      - --rpc-external
+      - --rpc-cors=all
+      - --rpc-port=9944
+    volumes:
+      # Generate with `just chain-spec westend` in a polkadot-bulletin-chain checkout.
+      - ./spec:/spec:ro
+    ports:
+      - '127.0.0.1:9944:9944'
+    restart: unless-stopped
+
+  ipfs-gateway:
+    # The node speaks Bitswap but serves no HTTP gateway, so Kubo peers with it and
+    # provides the /ipfs/<cid> reads the browser makes.
+    image: ipfs/kubo:latest
+    environment:
+      IPFS_PROFILE: server
+    ports:
+      - '127.0.0.1:8283:8080'
+    depends_on:
+      - bulletin-node
+    restart: unless-stopped
+
+  poi-backend:
+    build:
+      # Repo root: the PAPI descriptors this service depends on live there.
+      context: ../..
+      dockerfile: services/poi-backend/Dockerfile
+    image: poi-backend:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8787:8787'
+    environment:
+      PORT: 8787
+      BULLETIN_WS: ws://bulletin-node:9944
+      # Chopsticks on the host, not in this compose file.
+      ASSET_HUB_WS: ws://host.docker.internal:8000
+      ALLOWED_ORIGINS: http://localhost:3000
+      MAX_IMAGE_BYTES: 1048576
+      # Dev chain only. Both of these are refused in the production compose file.
+      OPS_SEED: //Ops
+      SUDO_BOOTSTRAP: 'true'
+      ALLOW_DEV_SIGNING: 'true'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      - bulletin-node

@@ -1,0 +1,30 @@
+{
+  "name": "poi-backend",
+  "version": "0.1.0",
+  "description": "Proof-of-Ink backend: gates Society uploads and makes the signed Bulletin Chain calls",
+  "type": "module",
+  "main": "src/index.mjs",
+  "private": true,
+  "packageManager": "yarn@4.17.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --preserve-symlinks src/index.mjs",
+    "setup:local": "node --preserve-symlinks scripts/setup-local-chain.mjs",
+    "status": "node --preserve-symlinks scripts/status.mjs",
+    "test:gate": "node --preserve-symlinks scripts/test-gate.mjs"
+  },
+  "author": "Kappa Sigma Mu",
+  "license": "MIT",
+  "dependencies": {
+    "@noble/hashes": "^2.3.0",
+    "@polkadot-api/descriptors": "portal:../../.papi/descriptors",
+    "@polkadot-labs/hdkd": "^0.0.30",
+    "@polkadot-labs/hdkd-helpers": "^0.0.32",
+    "@scure/base": "^2.3.0",
+    "@scure/sr25519": "^2.3.0",
+    "polkadot-api": "^2.1.8",
+    "rxjs": "^7.8.2"
+  }
+}

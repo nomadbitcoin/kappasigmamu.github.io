@@ -13,6 +13,18 @@
       "metadata": ".papi/metadata/ksmPeople.scale",
       "genesis": "0xc1af4cb4eb3918e5db15086c0cc5ec17fb334f728b7c65dd44bfe1e174ff8b3f",
       "codeHash": "0x52210c7b07487c4af6601b444bf2502cd342470f01c3d5d64ec891b415afada5"
+    },
+    "bulletin": {
+      "wsUrl": "wss://paseo-bulletin-next-rpc.polkadot.io",
+      "metadata": ".papi/metadata/bulletin.scale",
+      "genesis": "0x8cfe6717dc4becfda2e13c488a1e2061ff2dfee96e7d031157f72d36716c0a22",
+      "codeHash": "0x7c3b3f62ea02927027babdcf345707cdb4657ee16487498aecd8d196babdb772"
+    },
+    "pasAssetHub": {
+      "wsUrl": "wss://asset-hub-paseo-rpc.n.dwellir.com",
+      "metadata": ".papi/metadata/pasAssetHub.scale",
+      "genesis": "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2",
+      "codeHash": "0x73bb1c8197a2d7786be576b499faa2703c52b88580f1c7d03f141cf6642bcd5b"
     }
   }
 }

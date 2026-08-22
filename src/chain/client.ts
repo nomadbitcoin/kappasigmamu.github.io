@@ -1,11 +1,12 @@
-import { ksmAssetHub, ksmPeople } from '@polkadot-api/descriptors'
+import { bulletin, ksmAssetHub, ksmPeople } from '@polkadot-api/descriptors'
 import { createClient, type PolkadotClient, type TypedApi } from 'polkadot-api'
 import { getWsProvider, type StatusChange } from 'polkadot-api/ws'
 import { endpointsFor, type ChainName } from './endpoints'
 
 export type AssetHubApi = TypedApi<typeof ksmAssetHub>
 export type PeopleApi = TypedApi<typeof ksmPeople>
-export type ChainApi = AssetHubApi | PeopleApi
+export type BulletinApi = TypedApi<typeof bulletin>
+export type ChainApi = AssetHubApi | PeopleApi | BulletinApi
 export type ChainClient = PolkadotClient
 
 export type ClientWithProvider = {
@@ -27,6 +28,9 @@ export function createChainClient(
 
 export function getTypedApi(chain: 'assetHub', client: ChainClient): AssetHubApi
 export function getTypedApi(chain: 'people', client: ChainClient): PeopleApi
+export function getTypedApi(chain: 'bulletin', client: ChainClient): BulletinApi
 export function getTypedApi(chain: ChainName, client: ChainClient): ChainApi {
-  return (chain === 'assetHub' ? client.getTypedApi(ksmAssetHub) : client.getTypedApi(ksmPeople)) as ChainApi
+  if (chain === 'assetHub') return client.getTypedApi(ksmAssetHub) as ChainApi
+  if (chain === 'people') return client.getTypedApi(ksmPeople) as ChainApi
+  return client.getTypedApi(bulletin) as ChainApi
 }
