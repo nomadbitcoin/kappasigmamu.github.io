@@ -17,7 +17,8 @@
  * out-of-band. See `docs/poi-bulletin-paseo.md`.
  */
 import { config } from './config.mjs'
-import { opsAuthorization, opsBalance, refreshOpsAuthorization } from './chain.mjs'
+import { disableAutoRenew, membershipStatus, opsAuthorization, opsBalance, refreshOpsAuthorization } from './chain.mjs'
+import * as registry from './registry.mjs'
 
 let timer
 
@@ -70,9 +71,45 @@ async function check() {
   }
 }
 
+/**
+ * Reconcile stored submissions against on-chain Society membership (renewal-as-approval).
+ *
+ * On-chain membership is the source of truth: a submission whose owner is no longer a
+ * member or candidate has been rejected (or the member left), so the keeper stops
+ * renewing both its artifacts and prunes them from the registry. The data then expires on
+ * its own at the end of its retention window (~14 days). Membership is read once per owner
+ * so an image+video pair costs a single query. See docs/adr/0002.
+ */
+async function reconcile() {
+  const entries = registry.all()
+  if (entries.length === 0) return
+
+  const statusByOwner = new Map()
+
+  for (const entry of entries) {
+    try {
+      if (!statusByOwner.has(entry.owner)) {
+        statusByOwner.set(entry.owner, await membershipStatus(entry.owner))
+      }
+      if (statusByOwner.get(entry.owner) !== 'none') continue
+
+      await disableAutoRenew(entry.contentHash)
+      await registry.remove(entry.contentHash)
+      console.log(`[keeper] owner ${entry.owner} no longer a member — stopped renewing ${entry.contentHash}`)
+    } catch (error) {
+      console.error(`[keeper] reconcile failed for ${entry.contentHash}: ${error.message}`)
+    }
+  }
+}
+
 export function startKeeper() {
-  void check()
-  timer = setInterval(() => void check(), config.keeperIntervalMs)
+  const tick = async () => {
+    await check()
+    await reconcile()
+  }
+
+  void tick()
+  timer = setInterval(() => void tick(), config.keeperIntervalMs)
   timer.unref?.()
 }
 

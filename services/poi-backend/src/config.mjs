@@ -38,7 +38,47 @@ export const config = {
   opsSeed: required('OPS_SEED'),
 
   /** Bulletin's own per-transaction ceiling is ~8 MiB; this is the app's policy limit. */
-  maxImageBytes: Number(optional('MAX_IMAGE_BYTES', 1048576)),
+  maxImageBytes: Number(optional('MAX_IMAGE_BYTES', 2 * 1024 * 1024)),
+
+  /**
+   * Largest raw verification video accepted at the door, before compression. The
+   * browser uploads the original; the backend transcodes it down to fit Bulletin. This
+   * only bounds the inbound upload so a client cannot stream an unbounded body at us.
+   */
+  maxVideoBytes: Number(optional('MAX_VIDEO_BYTES', 100 * 1024 * 1024)),
+
+  /**
+   * Target ceiling for the compressed video, kept below Bulletin's ~8 MiB single-
+   * transaction limit with margin for the envelope header. ffmpeg aims under this; the
+   * store is rejected if the result still exceeds it, rather than trapping on chain.
+   */
+  compressedVideoTargetBytes: Number(optional('COMPRESSED_VIDEO_TARGET_BYTES', 7 * 1024 * 1024)),
+
+  /**
+   * Element/Matrix voting room. The backend posts the compressed verification video as
+   * an `m.video` event plus a metadata line (docs/adr/0003). The token authenticates a
+   * dedicated bot account; it is a secret and must never be written to an image.
+   */
+  matrixHomeserver: optional('MATRIX_HOMESERVER', 'https://matrix.org'),
+  matrixToken: optional('MATRIX_TOKEN', ''),
+  matrixRoom: optional('MATRIX_ROOM', ''),
+
+  /**
+   * Off-chain state, all rebuildable from chain. The registry is a JSON file mapping
+   * each submission's content hash to its owner and artifact type; the image cache holds
+   * the wallpaper bytes the backend received, so the gallery need not depend on a
+   * possibly-unreachable IPFS gateway (docs/adr/0003).
+   */
+  registryPath: optional('REGISTRY_PATH', './data/registry.json'),
+  imageCacheDir: optional('IMAGE_CACHE_DIR', './data/images'),
+
+  /**
+   * IPFS gateway, the authoritative backup behind the image cache and the source for
+   * rebuilding it from chain. The documented Paseo gateway is currently unreachable
+   * (docs/adr/0003), so this is empty by default and cache misses simply 404 until a
+   * working gateway is configured; keep it set on mainnet.
+   */
+  ipfsGateway: optional('IPFS_GATEWAY', ''),
 
   /**
    * Whether this deployment may call `add_authorizer` via sudo.

@@ -264,6 +264,14 @@ Network switching must be present from the start: a network config selecting the
 
 ## 9. Decisions still open
 
+> **Update (2026-08-22):** items 1, 3 and 4 below are now resolved — see the ADRs.
+> 1 → **path B**, the ops account signs every `store` (the "authorized account" option;
+> `authorize_preimage` needs an authorizer status the Paseo faucet won't grant), so the
+> artifact bytes DO pass through the backend (`docs/adr/0001`). 3 → a rebuildable **JSON
+> registry cache** plus a self-describing envelope; each blob names its own owner and type
+> (`docs/adr/0003`, `CONTEXT.md`). 4 → **PAPI**, because `@polkadot/api` cannot sign
+> against the custom transaction extensions these runtimes carry. Item 2 stands.
+
 1. **Authorization shape for the POC** — preimage plus unsigned store (better end state; requires a service to register each hash before upload) versus a single authorized account signing every store (simpler; worse trust story).
 2. **Who holds the authorizer key**, and whether it is a multisig. This account also holds the authorization needed for `enable_auto_renew`, and its quota must stay funded or auto-renewal silently drops data.
 3. **Index location** — repo JSON versus People Chain identity versus Statement Store. Whether a fully on-chain read path is a project goal or whether GitHub is acceptable indefinitely.

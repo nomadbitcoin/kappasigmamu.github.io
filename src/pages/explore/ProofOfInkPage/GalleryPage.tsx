@@ -1,72 +1,51 @@
 import { useEffect, useState } from 'react'
 import { Container, Row, Col, Modal, Spinner } from 'react-bootstrap'
 import styled from 'styled-components'
-import { useSociety } from '@/chain/society/SocietyContext'
+import { backendImageUrl, fetchGallery, type GalleryEntry } from '@/chain/bulletin'
 import { AccountIdentity } from '@/components/AccountIdentity'
-import { getLatestPinnedHash, fastestGateway, imageUrl } from '@/helpers/ipfs'
 import { ChainError } from '@/pages/explore/components/ChainError'
 import { Identicon } from '@/pages/explore/components/Identicon'
 
+/**
+ * The public Proof-of-Ink gallery.
+ *
+ * Reads from the backend, which returns one wallpaper per member whose owner is still a
+ * Society member/candidate on chain (docs/adr/0002-0003). Each entry names its owner and
+ * the CID of the cached wallpaper the backend serves.
+ */
 const GalleryPage = (): JSX.Element => {
-  const { memberEntries, info } = useSociety()
-  const members = memberEntries.data
-    ?.map(({ accountId }) => accountId)
-    .filter((accountId) => accountId !== info.data?.founder)
-  const [folderHash, setFolderHash] = useState('')
-  const [gateway, setGateway] = useState('')
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const nextFolderHash = await getLatestPinnedHash()
-        const nextGateway = await fastestGateway(nextFolderHash)
-        if (!cancelled) {
-          setFolderHash(nextFolderHash)
-          setGateway(nextGateway)
-        }
-      } catch {}
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-  const error = memberEntries.error ?? info.error
-  if (error)
-    return (
-      <ChainError
-        error={error}
-        onRetry={() => {
-          memberEntries.refetch()
-          info.refetch()
-        }}
-      />
-    )
-  if (!folderHash || !gateway || !members || !info.data)
-    return <Spinner className="mx-auto d-block" animation="border" role="status" variant="primary" />
+  const [entries, setEntries] = useState<GalleryEntry[] | null>(null)
+  const [error, setError] = useState<Error | null>(null)
+
+  const load = () => {
+    setError(null)
+    setEntries(null)
+    fetchGallery()
+      .then(setEntries)
+      .catch((caught) => setError(caught instanceof Error ? caught : new Error(String(caught))))
+  }
+
+  useEffect(load, [])
+
+  if (error) return <ChainError error={error} onRetry={load} />
+  if (!entries) return <Spinner className="mx-auto d-block" animation="border" role="status" variant="primary" />
+
   return (
     <Container>
       <Row>
-        {members.map((member) => (
-          <ProofOfInkImage key={member} gateway={gateway} folderHash={folderHash} member={member} />
+        {entries.map((entry) => (
+          <ProofOfInkImage key={entry.cid} address={entry.address} src={backendImageUrl(entry.cid)} />
         ))}
       </Row>
     </Container>
   )
 }
 
-const ProofOfInkImage = ({
-  gateway,
-  folderHash,
-  member
-}: {
-  gateway: string
-  folderHash: string
-  member: string
-}): JSX.Element => {
+const ProofOfInkImage = ({ address, src }: { address: string; src: string }): JSX.Element => {
   const [error, setError] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [selectedImage, setSelectedImage] = useState('')
   const [modalShow, setModalShow] = useState(false)
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading && !error) {
@@ -76,20 +55,12 @@ const ProofOfInkImage = ({
     }, 10_000)
     return () => clearTimeout(timer)
   }, [loading, error])
-  const image = imageUrl({ gateway, folderHash, member })
+
   return (
     <>
       <Col xs={12} sm={6} md={6} lg={3} className="mb-3">
         <Border>
-          <ImageContainer
-            onClick={() => {
-              if (!loading && !error) {
-                setSelectedImage(image)
-                setModalShow(true)
-              }
-            }}
-            $clickable={!error && !loading}
-          >
+          <ImageContainer onClick={() => !loading && !error && setModalShow(true)} $clickable={!error && !loading}>
             <Row>
               <Col xs={12} className="p-0">
                 {loading && !error && (
@@ -97,9 +68,13 @@ const ProofOfInkImage = ({
                 )}
                 {!loading && error && <p className="m-0 mt-3">Missing Proof-of-Ink</p>}
                 <StyledImage
-                  src={image}
+                  src={src}
                   onLoad={() => {
                     setError(false)
+                    setLoading(false)
+                  }}
+                  onError={() => {
+                    setError(true)
                     setLoading(false)
                   }}
                   style={loading || error ? { display: 'none' } : {}}
@@ -110,10 +85,10 @@ const ProofOfInkImage = ({
           <MemberInformation>
             <Row className="d-flex align-items-center">
               <Col xs={2} className="text-center">
-                <Identicon value={member} size={32} theme="polkadot" />
+                <Identicon value={address} size={32} theme="polkadot" />
               </Col>
               <Col xs={9} md={9} lg={10} className="text-center text-truncate">
-                <AccountIdentity accountId={member} />
+                <AccountIdentity accountId={address} />
               </Col>
             </Row>
           </MemberInformation>
@@ -121,12 +96,13 @@ const ProofOfInkImage = ({
       </Col>
       <StyledModalContent size="lg" show={modalShow} onHide={() => setModalShow(false)} centered>
         <Modal.Body style={{ display: 'flex', justifyContent: 'center' }}>
-          {selectedImage && <StyledModalImage src={selectedImage} />}
+          <StyledModalImage src={src} />
         </Modal.Body>
       </StyledModalContent>
     </>
   )
 }
+
 const StyledModalContent = styled(Modal)`
   .modal-content {
     background-color: ${(props) => props.theme.colors.lightGrey};

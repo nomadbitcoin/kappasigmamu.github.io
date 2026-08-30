@@ -56,12 +56,24 @@ services:
       # Chopsticks on the host, not in this compose file.
       ASSET_HUB_WS: ws://host.docker.internal:8000
       ALLOWED_ORIGINS: http://localhost:3000
-      MAX_IMAGE_BYTES: 1048576
+      MAX_IMAGE_BYTES: 2097152
+      # Read wallpapers back through the Kubo gateway in this compose file.
+      IPFS_GATEWAY: http://ipfs-gateway:8080
+      REGISTRY_PATH: /app/services/poi-backend/data/registry.json
+      IMAGE_CACHE_DIR: /app/services/poi-backend/data/images
+      # No voting room locally; leave Matrix empty so uploads skip the post.
+      MATRIX_TOKEN: ''
+      MATRIX_ROOM: ''
       # Dev chain only. Both of these are refused in the production compose file.
       OPS_SEED: //Ops
       SUDO_BOOTSTRAP: 'true'
       ALLOW_DEV_SIGNING: 'true'
+    volumes:
+      - poi-data-local:/app/services/poi-backend/data
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     depends_on:
       - bulletin-node
+
+volumes:
+  poi-data-local:

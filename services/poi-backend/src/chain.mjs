@@ -17,13 +17,17 @@
  * `Keyring`, which keeps `@polkadot/*` out of the dependency tree entirely.
  */
 import { bulletin, ksmAssetHub } from '@polkadot-api/descriptors'
-import { createClient } from 'polkadot-api'
+import { Binary, createClient } from 'polkadot-api'
 import { getWsProvider } from 'polkadot-api/ws'
 import { getPolkadotSigner } from 'polkadot-api/signer'
 import { sr25519CreateDerive } from '@polkadot-labs/hdkd'
 import { DEV_PHRASE, entropyToMiniSecret, mnemonicToEntropy, ss58Address } from '@polkadot-labs/hdkd-helpers'
+import { base32 } from '@scure/base'
 import { config } from './config.mjs'
 import { toHex } from './verify.mjs'
+
+/** Raw CID bytes -> the CIDv1 string the IPFS gateway indexes by (base32, `b`-prefixed). */
+const encodeCid = (cidBytes) => `b${base32.encode(cidBytes).toLowerCase().replace(/=+$/, '')}`
 
 let bulletinClient
 let assetHubClient
@@ -162,26 +166,26 @@ export async function membershipStatus(address) {
 }
 
 /**
- * Grant a single-use authorization for one specific set of bytes.
+ * Store one artifact's bytes on Bulletin, signed by the ops account (path B).
  *
- * The ops key never sees the image — it pre-approves a hash the browser handed it, so
- * it cannot substitute different content. The browser then submits `store` unsigned;
- * the pallet matches the bytes against this authorization.
- *
- * Unlike `store` and `authorize_account`, this call carries no `feeless_if` and is
- * paid, so the ops account needs a funded, monitored balance on any real network.
+ * Under path B the ops account submits `store` itself — the browser no longer touches
+ * the chain — so it needs its own account authorization (kept alive by the keeper) and
+ * `store` is feeless under it. The chain content-addresses the bytes: the returned
+ * `content_hash` is blake2b256 of exactly what was submitted, which lets the caller
+ * confirm the bytes it handed in are the bytes on chain (docs/adr/0001).
  */
-export async function authorizePreimage(contentHash, size) {
-  const { blockHash } = await submit(
-    bulletinApi.tx.TransactionStorage.authorize_preimage({
-      // `SizedHex<32>` is a plain 0x-prefixed hex string, not a Binary wrapper — this
-      // is the browser-supplied content hash passed straight through.
-      content_hash: contentHash,
-      max_size: BigInt(size)
-    })
+export async function storeArtifact(envelopeBytes) {
+  const { events } = await submit(
+    bulletinApi.tx.TransactionStorage.store({ data: Binary.fromBytes(envelopeBytes) })
   )
 
-  return blockHash
+  const stored = events.find((event) => event.type === 'TransactionStorage' && event.value.type === 'Stored')
+  if (!stored) throw new Error('store succeeded but no Stored event was emitted')
+
+  const chainHash = stored.value.value.content_hash
+  const contentHash = typeof chainHash === 'string' ? chainHash : toHex(chainHash)
+
+  return { contentHash, cid: encodeCid(stored.value.value.cid) }
 }
 
 /**
@@ -197,6 +201,38 @@ export async function enableAutoRenew(contentHash) {
   )
 
   return blockHash
+}
+
+/**
+ * Stop renewing stored data — the on-chain expression of a rejection.
+ *
+ * Approval is passive (renewal keeps running); rejection is this call. Once auto-renew is
+ * off, the data is deleted at the end of its current retention window (~14 days) with no
+ * further action. The keeper invokes this for any submission whose owner is no longer a
+ * Society member/candidate (renewal-as-approval, docs/adr/0002).
+ */
+export async function disableAutoRenew(contentHash) {
+  const { blockHash } = await submit(
+    bulletinApi.tx.DataRenewal.disable_auto_renew({ content_hash: contentHash })
+  )
+
+  return blockHash
+}
+
+/**
+ * Every content hash currently set to auto-renew.
+ *
+ * The registry is only a cache; this is how it is rebuilt from chain when it is lost.
+ * Each blob still names its own owner in its envelope, so pairing hashes back to owners
+ * needs a gateway fetch per entry — done by the registry, not here.
+ */
+export async function listRenewals() {
+  const entries = await bulletinApi.query.DataRenewal.Renewals.getEntries()
+
+  return entries.map((entry) => {
+    const key = entry.keyArgs[0]
+    return typeof key === 'string' ? key : toHex(key)
+  })
 }
 
 /**

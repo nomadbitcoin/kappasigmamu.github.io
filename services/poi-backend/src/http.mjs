@@ -1,9 +1,10 @@
 /**
  * Minimal HTTP plumbing — CORS, body reading, JSON responses.
  *
- * No framework: this service has four routes and adding Express would be more
+ * No framework: this service has a handful of routes and adding Express would be more
  * dependency surface than the thing it serves.
  */
+import Busboy from 'busboy'
 
 export function resolveOrigin(request, allowedOrigins) {
   const origin = request.headers.origin
@@ -57,5 +58,65 @@ export function readJson(request, limitBytes = 64 * 1024) {
     })
 
     request.on('error', reject)
+  })
+}
+
+/**
+ * Stream a multipart upload, buffering each expected file under its own byte cap.
+ *
+ * `fileLimits` maps a field name to its maximum size in bytes. A file that exceeds its
+ * cap aborts the whole request immediately, before the oversized body is buffered in
+ * full — a client cannot make us hold an unbounded upload in memory. Text fields are
+ * collected as strings. Resolves `{ fields, files }` where each file is a `Uint8Array`.
+ */
+export function readMultipart(request, fileLimits) {
+  return new Promise((resolve, reject) => {
+    let busboy
+    try {
+      busboy = Busboy({
+        headers: request.headers,
+        limits: { files: Object.keys(fileLimits).length, fields: 10 }
+      })
+    } catch {
+      return reject(new Error('Expected a multipart/form-data body'))
+    }
+
+    const fields = {}
+    const files = {}
+    const fail = (error) => {
+      request.unpipe(busboy)
+      request.destroy()
+      reject(error)
+    }
+
+    busboy.on('field', (name, value) => {
+      fields[name] = value
+    })
+
+    busboy.on('file', (name, stream, info) => {
+      const cap = fileLimits[name]
+      if (cap === undefined) {
+        stream.resume() // Unexpected file: drain and ignore rather than buffer it.
+        return
+      }
+
+      const chunks = []
+      let size = 0
+
+      stream.on('data', (chunk) => {
+        size += chunk.length
+        if (size > cap) return fail(new Error(`File "${name}" exceeds its ${cap}-byte limit`))
+        chunks.push(chunk)
+      })
+      stream.on('limit', () => fail(new Error(`File "${name}" exceeds its ${cap}-byte limit`)))
+      stream.on('end', () => {
+        files[name] = new Uint8Array(Buffer.concat(chunks, size))
+      })
+    })
+
+    busboy.on('error', (error) => fail(error instanceof Error ? error : new Error(String(error))))
+    busboy.on('close', () => resolve({ fields, files }))
+
+    request.pipe(busboy)
   })
 }

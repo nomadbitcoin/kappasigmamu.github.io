@@ -6,9 +6,11 @@
 
 FROM node:22-alpine
 
-# Init process so SIGTERM reaches Node directly and shutdown drains connections
+# tini: init process so SIGTERM reaches Node directly and shutdown drains connections
 # instead of being killed at the 10s timeout.
-RUN apk add --no-cache tini
+# ffmpeg: compresses each verification video down to Bulletin's per-transaction limit
+# before it is stored (src/media.mjs); the service cannot accept uploads without it.
+RUN apk add --no-cache tini ffmpeg
 
 WORKDIR /app
 
@@ -39,7 +41,12 @@ RUN corepack enable && yarn workspaces focus --production --all
 COPY services/poi-backend/src ./src
 COPY services/poi-backend/scripts ./scripts
 
-# Drop privileges. The image needs no write access to anything it ships.
+# The registry JSON and the wallpaper cache are written under ./data at runtime (mount a
+# persistent volume here). Create it owned by `node` so the dropped-privilege process can
+# write even before a volume is attached.
+RUN mkdir -p ./data/images && chown -R node:node ./data
+
+# Drop privileges. Apart from ./data the image needs no write access to anything it ships.
 USER node
 
 ENV NODE_ENV=production

@@ -1,70 +1,63 @@
-import type { BulletinApi, ChainClient } from '@/chain/client'
+import type { PolkadotSigner } from 'polkadot-api/signer'
+import { submissionDigest } from './envelope'
 import { getPoiBackendUrl } from '@/helpers/bulletinProviders'
 
 /**
- * Proof-of-Ink upload against Bulletin Chain.
+ * Proof-of-Ink upload against Bulletin Chain (path B, docs/adr/0001).
  *
- * The image never passes through the backend. The browser hashes the bytes, the backend
- * verifies the uploader and pre-authorizes that one hash, and then the browser sends
- * the bytes to the chain directly. So the ops key can refuse an upload, but it cannot
- * substitute different content for one it has approved.
+ * The artifact bytes DO pass through the backend here. The member picks a wallpaper image
+ * and a verification video, signs one digest binding both files' raw hashes, and posts
+ * everything in a single multipart request. The backend verifies that signature, checks
+ * Society membership, compresses the video, and signs and submits `store` under the ops
+ * key — so the member needs no funds and no Bulletin account, only an off-chain signature.
  */
+
+const toHex = (bytes: Uint8Array): string =>
+  `0x${Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')}`
 
 const backendError = async (response: Response): Promise<never> => {
   const body = (await response.json().catch(() => ({}))) as { error?: string }
   throw new Error(body.error || `Backend returned ${response.status}`)
 }
 
+export type SubmitResult = {
+  status: 'member' | 'candidate'
+  image: { contentHash: string; cid: string }
+  video: { contentHash: string; cid: string }
+  matrix: { skipped: boolean; error?: string }
+}
+
 /**
- * Ask the backend to authorize one specific preimage.
+ * Upload one submission: sign both files' combined hash, then POST them.
  *
- * The signature proves the uploader holds the key for `address`, and covers the content
- * hash specifically, so it cannot be replayed to authorize different bytes. The backend
- * additionally checks Society membership — candidates count, since submitting a tattoo
- * is part of candidacy.
+ * The wallet signs the raw digest via `signBytes`, which the extension wraps as
+ * `<Bytes>…</Bytes>` — the form the backend's `verifyOwnership` accepts. The signature
+ * covers exactly these two files, so it cannot be replayed onto different bytes.
  */
-export async function requestAuthorization(payload: {
+export async function submitProofOfInk(params: {
   address: string
-  contentHash: string
-  size: number
-  signature: string
-}): Promise<{ status: 'member' | 'candidate' }> {
-  const response = await fetch(`${getPoiBackendUrl()}/authorize`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
+  signer: PolkadotSigner
+  image: File
+  video: File
+}): Promise<SubmitResult> {
+  const [imageBytes, videoBytes] = await Promise.all([
+    params.image.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
+    params.video.arrayBuffer().then((buffer) => new Uint8Array(buffer))
+  ])
+
+  const digest = submissionDigest(imageBytes, videoBytes)
+  const signature = toHex(await params.signer.signBytes(digest))
+
+  const form = new FormData()
+  form.append('address', params.address)
+  form.append('signature', signature)
+  form.append('image', params.image)
+  form.append('video', params.video)
+
+  const response = await fetch(`${getPoiBackendUrl()}/upload`, { method: 'POST', body: form })
 
   if (!response.ok) await backendError(response)
-  return (await response.json()) as { status: 'member' | 'candidate' }
-}
-
-/**
- * Submit `store` with no signature.
- *
- * `store` is unconditionally feeless and the chain uses `NoCurrency`, so an unsigned
- * submission needs no account, no balance and no nonce — the uploader never needs funds
- * on Bulletin. The preimage authorization is what admits the transaction, and the bytes
- * must hash to the authorized content hash or it is rejected.
- */
-export async function storeUnsigned(api: BulletinApi, client: ChainClient, bytes: Uint8Array): Promise<void> {
-  const bareTx = await api.tx.TransactionStorage.store({ data: bytes }).getBareTx()
-  await client.submit(bareTx)
-}
-
-/**
- * Ask the backend to register recurring renewal.
- *
- * Without it the data is deleted at the end of the retention period (~14 days). The
- * browser cannot make this call: `enable_auto_renew` requires a signed and authorized
- * origin, and the store was unsigned.
- */
-export async function requestAutoRenew(contentHash: string): Promise<void> {
-  const response = await fetch(`${getPoiBackendUrl()}/finalize`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contentHash })
-  })
-
-  if (!response.ok) await backendError(response)
+  return (await response.json()) as SubmitResult
 }

@@ -24,6 +24,7 @@
     "@polkadot-labs/hdkd-helpers": "^0.0.32",
     "@scure/base": "^2.3.0",
     "@scure/sr25519": "^2.3.0",
+    "busboy": "^1.6.0",
     "polkadot-api": "^2.1.8",
     "rxjs": "^7.8.2"
   }

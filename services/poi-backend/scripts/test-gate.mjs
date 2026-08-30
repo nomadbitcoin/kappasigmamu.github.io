@@ -3,12 +3,15 @@
  *
  * Every row is an attack the Apillon predecessor could not stop: it checked only the
  * request Origin, so any allowed page could overwrite any member's image. These assert
- * that each check is actually wired and in the right order.
+ * that each check is actually wired and in the right order. All of them are refused
+ * BEFORE any expensive work (compression, chain writes), so this needs a backend up but
+ * not a funded ops key or ffmpeg.
  *
- * Runs against a live backend, so it needs the local stack up:
+ * Runs against a live backend:
  *   node scripts/test-gate.mjs [http://127.0.0.1:8787]
  *
- * The signing wallet is stood in for by /dev-sign, which requires ALLOW_DEV_SIGNING.
+ * The signing wallet is stood in for by local dev keys; the backend must run with
+ * ALLOW_DEV_SIGNING only if you also exercise the happy path (this script does not).
  */
 import { sr25519CreateDerive } from '@polkadot-labs/hdkd'
 import { DEV_PHRASE, entropyToMiniSecret, mnemonicToEntropy, ss58Address } from '@polkadot-labs/hdkd-helpers'
@@ -18,6 +21,7 @@ const BACKEND = process.argv[2] || process.env.BACKEND_URL || 'http://127.0.0.1:
 const ORIGIN = process.env.ORIGIN || 'http://localhost:3000'
 
 const toHex = (bytes) => `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`
+const hash = (bytes) => blake2b(bytes, { dkLen: 32 })
 
 const derive = sr25519CreateDerive(entropyToMiniSecret(mnemonicToEntropy(DEV_PHRASE)))
 const devAccount = (path) => {
@@ -29,61 +33,69 @@ const devAccount = (path) => {
 const bob = devAccount('//Bob')
 const dave = devAccount('//Dave')
 
-const hashOf = (text) => toHex(blake2b(new TextEncoder().encode(text), { dkLen: 32 }))
-const sign = (pair, hash) =>
-  `0x${Buffer.from(pair.sign(Uint8Array.from(hash.slice(2).match(/../g).map((b) => parseInt(b, 16))))).toString('hex')}`
+/** The digest the member signs: blake2b(blake2b(image) || blake2b(rawVideo)). */
+const digestOf = (image, video) => {
+  const combined = new Uint8Array(64)
+  combined.set(hash(image), 0)
+  combined.set(hash(video), 32)
+  return hash(combined)
+}
+const sign = (pair, digest) => toHex(pair.sign(digest))
 
-async function attempt({ body, origin = ORIGIN }) {
-  const response = await fetch(`${BACKEND}/authorize`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: origin },
-    body: JSON.stringify(body)
-  })
+const image = new TextEncoder().encode('bob wallpaper')
+const video = new TextEncoder().encode('bob video')
+const bobDigest = digestOf(image, video)
+const otherDigest = digestOf(new TextEncoder().encode('different'), video)
 
+/** POST a multipart /upload with the given fields and files. */
+async function attempt({ address, signature, image: img, video: vid, origin = ORIGIN, omit = [] }) {
+  const form = new FormData()
+  if (address && !omit.includes('address')) form.append('address', address)
+  if (signature && !omit.includes('signature')) form.append('signature', signature)
+  if (img && !omit.includes('image')) form.append('image', new Blob([img], { type: 'image/png' }), 'w.png')
+  if (vid && !omit.includes('video')) form.append('video', new Blob([vid], { type: 'video/mp4' }), 'v.mp4')
+
+  const response = await fetch(`${BACKEND}/upload`, { method: 'POST', headers: { Origin: origin }, body: form })
   return { status: response.status, body: await response.json().catch(() => ({})) }
 }
-
-const bobHash = hashOf('bob tattoo')
-const otherHash = hashOf('different bytes')
 
 const cases = [
   {
     name: 'claims Bob, signed by Dave',
     expect: 401,
-    body: { address: bob.address, contentHash: bobHash, size: 100, signature: sign(dave, bobHash) }
+    args: { address: bob.address, signature: sign(dave, bobDigest), image, video }
   },
   {
     name: 'Bob signature replayed onto other content',
     expect: 401,
-    body: { address: bob.address, contentHash: otherHash, size: 100, signature: sign(bob, bobHash) }
+    args: { address: bob.address, signature: sign(bob, otherDigest), image, video }
   },
   {
     name: 'non-member, valid signature',
     expect: 403,
-    body: { address: dave.address, contentHash: bobHash, size: 100, signature: sign(dave, bobHash) }
+    args: { address: dave.address, signature: sign(dave, digestOf(image, video)), image, video }
   },
   {
     name: 'oversize image',
     expect: 400,
-    body: { address: bob.address, contentHash: bobHash, size: 999_999_999, signature: sign(bob, bobHash) }
+    args: { address: bob.address, signature: sign(bob, bobDigest), image: new Uint8Array(3 * 1024 * 1024), video }
   },
   {
     name: 'missing fields',
     expect: 400,
-    body: { address: bob.address }
+    args: { address: bob.address, signature: sign(bob, bobDigest), image, video, omit: ['signature'] }
   },
   {
     name: 'disallowed origin',
     expect: 403,
-    origin: 'https://evil.example',
-    body: { address: bob.address, contentHash: bobHash, size: 100, signature: sign(bob, bobHash) }
+    args: { address: bob.address, signature: sign(bob, bobDigest), image, video, origin: 'https://evil.example' }
   }
 ]
 
 let failures = 0
 
 for (const testCase of cases) {
-  const { status, body } = await attempt(testCase)
+  const { status, body } = await attempt(testCase.args)
   const ok = status === testCase.expect
 
   if (!ok) failures += 1

@@ -1,22 +1,42 @@
 import { unpackEnvelope } from './envelope'
-import { getIpfsGateway } from '@/helpers/bulletinProviders'
+import { getIpfsGateway, getPoiBackendUrl } from '@/helpers/bulletinProviders'
 
 /**
- * Reading Proof-of-Ink images back.
+ * Reading Proof-of-Ink wallpapers back.
  *
- * The node speaks Bitswap over libp2p, not HTTP, so the browser cannot fetch a CID from
- * it directly — an IPFS gateway must be peered to the node and is what serves these URLs.
+ * Primary source is the backend, not the IPFS gateway directly: the documented Paseo
+ * gateway is unreachable, so the backend serves the wallpaper bytes it cached at upload
+ * (docs/adr/0003). The gateway helpers below remain as a fallback for when a working
+ * gateway exists (e.g. mainnet). Bulletin is the source of truth behind both.
  */
+
+export type GalleryEntry = { address: string; cid: string; status: 'member' | 'candidate' }
+
+/** The current gallery: one wallpaper per member the backend still considers eligible. */
+export async function fetchGallery(): Promise<GalleryEntry[]> {
+  const response = await fetch(`${getPoiBackendUrl()}/gallery`)
+  if (!response.ok) throw new Error(`Backend returned ${response.status}`)
+
+  const body = (await response.json()) as { images: GalleryEntry[] }
+  return body.images
+}
+
+/** URL for a wallpaper's bytes, served from the backend cache. */
+export const backendImageUrl = (cid: string): string => `${getPoiBackendUrl()}/image/${cid}`
+
+/** Direct IPFS gateway URL — the fallback read path when a gateway is reachable. */
 export const imageUrlFromCid = (cid: string): string => `${getIpfsGateway()}/ipfs/${cid}`
 
 /**
- * Fetch a stored blob and split it back into owner and image.
+ * Fetch a stored blob from the gateway and split it back into owner and bytes.
  *
- * The owner is read out of the blob rather than from any index, so a mismatch between
- * the address a gallery entry claims and the address inside the bytes is detectable
- * without trusting whoever published the index.
+ * The owner is read out of the blob rather than from any index, so a mismatch between the
+ * address an entry claims and the address inside the bytes is detectable without trusting
+ * whoever published the index. Fallback path; the backend is the primary reader.
  */
-export async function fetchEnvelope(cid: string): Promise<{ address: string; image: Uint8Array }> {
+type Envelope = { address: string; artifactType: number; bytes: Uint8Array }
+
+export async function fetchEnvelope(cid: string): Promise<Envelope> {
   const response = await fetch(imageUrlFromCid(cid))
   if (!response.ok) throw new Error(`Gateway returned ${response.status}`)
 

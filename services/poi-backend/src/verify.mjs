@@ -48,6 +48,29 @@ export function hexToBytes(hex) {
 
 export const toHex = (bytes) => `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`
 
+/** blake2b-256 of raw bytes, as a 0x hex string — the hash Bulletin content-addresses by. */
+export const contentHashOf = (bytes) => toHex(blake2b(bytes, { dkLen: 32 }))
+
+/**
+ * The single 32-byte digest the member signs to authorize one submission.
+ *
+ * A submission is two artifacts, and we want one wallet prompt covering both. So the
+ * member signs `blake2b(imageHash || videoHash)` over the RAW uploaded bytes — the only
+ * hashes they can compute before upload, since the backend compresses the video after.
+ * The backend recomputes this from the received bytes and verifies the one signature,
+ * which binds the uploader's key to exactly these two files. See docs/adr/0001.
+ */
+export function submissionHash(imageBytes, rawVideoBytes) {
+  const imageHash = blake2b(imageBytes, { dkLen: 32 })
+  const videoHash = blake2b(rawVideoBytes, { dkLen: 32 })
+
+  const combined = new Uint8Array(imageHash.length + videoHash.length)
+  combined.set(imageHash, 0)
+  combined.set(videoHash, imageHash.length)
+
+  return toHex(blake2b(combined, { dkLen: 32 }))
+}
+
 /**
  * Verify that `address` signed `contentHash`.
  *

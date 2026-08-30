@@ -69,14 +69,18 @@ portal.
 | Route | Purpose |
 |---|---|
 | `GET /health` | Liveness plus ops address, balance and authorization expiry. No secrets. |
-| `POST /authorize` | Gate the uploader, then `authorize_preimage(contentHash, size)`. |
-| `POST /finalize` | `enable_auto_renew(contentHash)` once the bytes are on chain. |
+| `POST /upload` | The whole flow: gate the uploader, compress the video, store both artifacts, enable auto-renew, post the video to Element. |
+| `GET /gallery` | Wallpapers whose owner is still a Society member/candidate. |
+| `GET /image/:cid` | A cached wallpaper's bytes (IPFS gateway is the backfill source). |
 | `POST /dev-sign` | Local testing only. Refused unless `ALLOW_DEV_SIGNING=true`. |
 
-**Image bytes never pass through here.** The browser hashes them, this service
-pre-authorizes that one hash, and the browser submits `store` unsigned straight to the
-node. The ops key can refuse an upload but cannot substitute content for one it has
-already approved.
+**The artifact bytes pass through here (path B, `docs/adr/0001`).** The browser sends a
+wallpaper image and a verification video with one wallet signature over both files'
+hashes; this service verifies that signature, checks Society membership, compresses the
+video to fit Bulletin's per-transaction limit, and signs and submits `store` for both
+blobs under the ops key. The browser needs no funds and no Bulletin account. Approval is
+expressed by continued renewal: the keeper stops renewing a submission once its owner is
+no longer a member/candidate, and the data then expires on its own (`docs/adr/0002`).
 
 ### The gate
 
@@ -87,8 +91,8 @@ Checks run cheapest-first and each refuses a specific attack:
 | Claims another member's address | `401 Invalid signature` |
 | Replays a signature onto different bytes | `401 Invalid signature` |
 | Valid signature, not in Society | `403 Not a Society member or candidate` |
-| Oversize image | `400 Size must be between …` |
-| Missing fields | `400 Missing required fields` |
+| Oversize image or video | `400 File "…" exceeds its …-byte limit` (aborted mid-stream) |
+| Missing fields | `400 Missing address, signature, image or video` |
 | Origin not on the allowlist | `403 Unauthorized origin` |
 
 Candidates are accepted as well as members: submitting a tattoo is part of candidacy,
@@ -149,10 +153,11 @@ taking the authorizer registration and the ops authorization with it. It is idem
 
 ## Operational notes
 
-- **`authorize_preimage` is not feeless.** Only `store`, `store_with_cid_config`,
-  `authorize_account` and `refresh_account_authorization` carry `feeless_if`. The ops
-  account is charged on every upload and needs a funded, monitored balance. `/health`
-  and the keeper both report it.
+- **`store` under the account authorization is feeless**, so path B does not spend
+  balance per upload. What it *does* spend is the authorization's quota — bytes and
+  transaction allowance — which is finite and refills only on re-authorization. The
+  keeper logs both remaining counters; watch them, not just the balance. (A small balance
+  is still needed for `refresh_account_authorization` where that path is available.)
 - **The ops authorization expires** after `AuthorizationPeriod` (14 days on
   Westend/Paseo). When it lapses, uploads fail *and* auto-renewals stop — so stored
   images are deleted at the end of their retention window. The in-process keeper

@@ -28,7 +28,18 @@ services:
       BULLETIN_WS: ${BULLETIN_WS}
       ASSET_HUB_WS: ${ASSET_HUB_WS}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
-      MAX_IMAGE_BYTES: ${MAX_IMAGE_BYTES:-1048576}
+      MAX_IMAGE_BYTES: ${MAX_IMAGE_BYTES:-2097152}
+      MAX_VIDEO_BYTES: ${MAX_VIDEO_BYTES:-104857600}
+      COMPRESSED_VIDEO_TARGET_BYTES: ${COMPRESSED_VIDEO_TARGET_BYTES:-7340032}
+      # Element voting room. MATRIX_TOKEN is a secret from .env; empty token/room skips
+      # posting (docs/adr/0003).
+      MATRIX_HOMESERVER: ${MATRIX_HOMESERVER:-https://matrix.org}
+      MATRIX_TOKEN: ${MATRIX_TOKEN:-}
+      MATRIX_ROOM: ${MATRIX_ROOM:-}
+      # Off-chain caches live on the mounted volume below.
+      REGISTRY_PATH: /app/services/poi-backend/data/registry.json
+      IMAGE_CACHE_DIR: /app/services/poi-backend/data/images
+      IPFS_GATEWAY: ${IPFS_GATEWAY:-}
       # Never true outside a local dev chain — see env.example.
       SUDO_BOOTSTRAP: ${SUDO_BOOTSTRAP:-false}
       ALLOW_DEV_SIGNING: ${ALLOW_DEV_SIGNING:-false}
@@ -39,8 +50,15 @@ services:
       # `docker compose config` on the host. Keep the host access-controlled, and
       # treat a host compromise as a compromise of this account.
       OPS_SEED: ${OPS_SEED:?OPS_SEED must be set in .env — run scripts/generate-ops-key.mjs then scripts/seed-to-env.mjs}
+    volumes:
+      # Registry JSON + wallpaper cache. Rebuildable from chain, but persisting it avoids
+      # a full rebuild on every restart.
+      - poi-data:/app/services/poi-backend/data
     logging:
       driver: json-file
       options:
         max-size: '10m'
         max-file: '5'
+
+volumes:
+  poi-data:
